@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['generate_house.py'],
+    ['client.py'],
     pathex=[],
     binaries=[],
     datas=[],
@@ -21,7 +21,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='generate_house',
+    name='client',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

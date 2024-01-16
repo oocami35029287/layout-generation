@@ -11,8 +11,8 @@ class Module(object):
 
 class Module1(Module):  # along walls
     def __init__(self, aisle_size, shelf_size):
-        module_size = (shelf_size[0], shelf_size[1] + aisle_size)
-        shelves = [[0, 0, 0]]
+        module_size = (shelf_size[0], shelf_size[1] + aisle_size+10)
+        shelves = [[0, 10, 0]]
         super().__init__(module_size, shelves)
     def __str__(self):
         return f"Module1(module_size={self.module_size}, shelves={self.shelves})"

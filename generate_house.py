@@ -5,10 +5,13 @@ import shelf_module
 import math
 import array
 import random
+import sys
 import rectangle_packing_solver as rps
 from scipy.spatial import distance
 import json
 
+#global image storage path
+abs_path = ""
 # 設定方形的基本尺寸
 base_width = 700
 base_height = 800
@@ -16,7 +19,7 @@ random_adj = 0.1
 door_size = 300
 
 aisle_size = 70
-shelf_size = [80, 40]
+shelf_size = [106, 42]
 
 def walls_generation():
     # 計算方形的四個角的坐標
@@ -157,7 +160,7 @@ def generate_inside_modules(inscribe):
     print("\n=== Solving with width/height constraints ===")
     solution = rps.Solver().solve(problem=problem, height_limit=space_size[1], show_progress=True, seed=1111)
     # print("solution:", solution)
-    rps.Visualizer().visualize(solution=solution, path="floorplan_example_limit.png")
+    rps.Visualizer().visualize(solution=solution, path=abs_path+"floorplan_example_limit.jpg")
 
     output_sq = solution.floorplan.positions
     new_array = []
@@ -171,6 +174,7 @@ def generate_inside_modules(inscribe):
             new_array.append(all_modules_list[i])
             print(all_modules_list[i])
     return new_array
+
 def transfer_to_floor_map(room_size,shelf_points,door, walls):
 
     # Create an empty white image
@@ -205,27 +209,41 @@ def transfer_to_floor_map(room_size,shelf_points,door, walls):
     for wall in walls:
         if wall[1] == "door":
             if distance.euclidean(wall[0][0],door[0])<distance.euclidean(wall[0][0],door[1]):
-                wall_no_door.append((wall[0][0],door[0]))
-                wall_no_door.append((door[1],wall[0][1]))
+                wall_no_door.append((wall[0][0].tolist(),door[0]))
+                wall_no_door.append((door[1],wall[0][1].tolist()))
             else:
-                wall_no_door.append((wall[0][0],door[1]))
-                wall_no_door.append((door[0],wall[0][1]))
+                wall_no_door.append((wall[0][0].tolist(),door[1]))
+                wall_no_door.append((door[0],wall[0][1].tolist()))
 
         else:
-            wall_no_door.append(wall[0])
+            wall_no_door.append(wall[0].tolist())
     for wall in wall_no_door:
         cv2.line(image, tuple(wall[0]), tuple(wall[1]), (0, 0, 0), 15)
     # Save the image as a PNG file
-    cv2.imwrite("shelf_rectangles.png", image)
+    # Resize the image by a factor of 5
+    resized_image = cv2.resize(image, (0, 0), fx=0.2, fy=0.2)
+    # Flip the resized image upside down
+    resized_image = cv2.flip(resized_image, 0)
+    # Convert the resized image to grayscale if it's not already
+    cv2.imwrite(abs_path+"shelf_rectangles.jpg", resized_image)    
+    if len(resized_image.shape) == 3:
+        resized_image = cv2.cvtColor(resized_image, cv2.COLOR_BGR2GRAY)
+
+    # Save the resized image as a PGM file
+    cv2.imwrite(abs_path+"resized_shelf_rectangles.pgm", resized_image)
     return wall_no_door
 
-def floor_generation():
-
+def floor_generation(dataDict,abs_path_var):
+    #transfer data
+    global abs_path
+    abs_path = abs_path_var
+    global aisle_size,base_width,base_height
+    aisle_size = dataDict["aisleSize"]
+    base_width = dataDict["storeWidth"]
+    base_height = dataDict["storeHeight"]
+    print("innerReceived MapData:")
+    print(dataDict)
     #modules generate
-
-
-
-    #=================================
     house, room_size = walls_generation() 
     # print("house ", house)
     #door
@@ -252,9 +270,11 @@ def floor_generation():
     
     # all_shelves,wall_no_door
     all_shelves_str = json.dumps(all_shelves)
-    walls_str = json.dumps(walls, default=lambda x: x.tolist() if isinstance(x, np.ndarray) else x)
-    returnstring = "shelf = "+all_shelves_str+"wall = " + walls_str
-    print(returnstring)
+    converted_walls = [{"point1": wall[0],"point2": wall[1]} for wall in wall_no_door]
+    # print(wall_no_door)
+    walls_str = json.dumps(converted_walls)
+    # returnstring = "shelf = "+all_shelves_str+"wall = " + walls_str
+    # print(returnstring)
         
     #=================================
     # 創建一個空的黑色圖像
@@ -275,10 +295,11 @@ def floor_generation():
     cv2.rectangle(img, lir.pt1(inscribe), lir.pt2(inscribe), (0, 255, 0), 2)
     cv2.line(img, tuple(door[0]), tuple(door[1]), (0, 0, 255), 2)
     # 保存圖像為jpg文件
-    cv2.imwrite('square_with_offsets.jpg', img)
+    cv2.imwrite(abs_path+'square_with_offsets.jpg', img)
     #=====================================
-    return returnstring
+    return all_shelves_str, walls_str
         
 
 if __name__ == "__main__":
-    floor_generation()
+    dataDict = {"aisleSize": 40,"storeWidth":700,"storeHeight":800}
+    floor_generation(dataDict)
